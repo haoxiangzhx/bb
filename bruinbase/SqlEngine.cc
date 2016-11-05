@@ -133,6 +133,28 @@ RC SqlEngine::select(int attr, const string& table, const vector<SelCond>& cond)
 RC SqlEngine::load(const string& table, const string& loadfile, bool index)
 {
   /* your code here */
+  if (!index)
+  {
+    const char *delim = {'\n'};
+    char *dup = strdup(loadfile.c_str());
+    char *token = strtok(dup, delim);
+
+    while(token != NULL)
+    {
+        cout << "parsing " << string(token) << endl;
+
+        int key;
+        string value;
+        parseLoadLine(string(token), key, value);
+
+        cout << "key = " << key << ", value = " << value << endl;
+
+
+        token = strtok(NULL, delim);
+    }
+
+    free(dup);
+  }
 
   return 0;
 }
