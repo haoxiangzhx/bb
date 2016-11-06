@@ -133,29 +133,27 @@ RC SqlEngine::select(int attr, const string& table, const vector<SelCond>& cond)
 RC SqlEngine::load(const string& table, const string& loadfile, bool index)
 {
   /* your code here */
+  RecordFile rf;
+  rf.open(table+".tbl", 'w');
+
   if (!index)
   {
-    const char *delim = {'\n'};
-    char *dup = strdup(loadfile.c_str());
-    char *token = strtok(dup, delim);
+    const char *file = loadfile.c_str();
+    ifstream infile(file);
+    string line;
 
-    while(token != NULL)
+    while (getline(infile, line))
     {
-        cout << "parsing " << string(token) << endl;
-
         int key;
         string value;
-        parseLoadLine(string(token), key, value);
+        parseLoadLine(line, key, value);
 
-        cout << "key = " << key << ", value = " << value << endl;
-
-
-        token = strtok(NULL, delim);
+        RecordId rid = rf.endRid();
+        rf.append(key, value, rid);
     }
-
-    free(dup);
   }
 
+  rf.close();
   return 0;
 }
 
