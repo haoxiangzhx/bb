@@ -9,182 +9,15 @@ using namespace std;
 void int2bytes(int n, char* bytes)
 {
 	int x=n;
-    // bytes[0] = (x >> 24) & 0xFF;
-    // bytes[1] = (x >> 16) & 0xFF;
-    // bytes[2] = (x >> 8) & 0xFF;
-    // bytes[3] = x & 0xFF;
     memcpy(bytes, &x, sizeof(int));
 }
 
 int bytes2int(char* bytes)
 {
-    //return (unsigned int) (bytes[0] << 24) | (unsigned int) (bytes[1] << 16) | (unsigned int) (bytes[2] << 8) | (unsigned int) bytes[3];
 	int x;
 	memcpy(&x, bytes, sizeof(int));
 	return x;
 }
-
-int    
-main (void)    
-{
-
-	// //=====================================
-	// // test BTL::read and BTL::write
-
-	// PageFile pf("test.txt", 'w');
-	// BTNonLeafNode ln1, ln2;
- //    memset(ln1.buffer, 0, 1024);
- //    cout<<"getKeyCount "<<ln1.getKeyCount()<<endl;
-	// PageId pid = pf.endPid();
-	// cout<<"pid is "<<pid<<endl;
-	// char bf[]="this is pagefile 1";
-	// strcpy(ln1.buffer, bf);
-	// cout<<"ln1 write "<<ln1.buffer<<endl;
-	// ln1.write(pid, pf);
-	// ln2.read(pid, pf);
-	// cout<<"ln2 read "<<ln2.buffer<<endl;
-	// //======================================
-
-	//======================================
-	// test int2bytes and bytes2int
-	// char bytes[4];
-	// while(true){
-	// 	int r=rand();
-	// 	int2bytes(r, bytes);
-	// 	int res=bytes2int(bytes);
-	// 	printf("trans int %d to res %d\n", r, res);
-	// 	if(r!=res)
-	// 		break;
-	// }
-
-	// //======================================
-	// stress test!!!!
-	//
-
-	// while (true)
-	// {
-	// 	BTNonLeafNode test;
- //        memset(test.buffer, 0, 1024);
- //        test.initializeRoot(98, -100, 99);
- //        printf("first pid %d, first key %d, second pid %d and count %d\n", bytes2int(test.buffer), bytes2int(test.buffer+4), bytes2int(test.buffer+8), bytes2int(test.buffer+1016));
-
-
-	// 	unordered_set<int> dup;
-
- //        int end=100, rem=10000;
-
-	// 	for(int i=0; i < end; i++){
-	// 		PageId p=100;
-	// 		int key=rand()%rem;
-	// 		while(dup.find(key)!=dup.end()){
-	// 			key=rand()%rem;
-	// 			cout<<key<<endl;
-	// 		}
-	// 		dup.insert(key);
-	// 		test.insert(key, p+i);
-	// 		printf("Insert key %d, pid %d\n", key, p+i);
-	// 	}
-
-	// 	int key, tmp=-200, offset=0; PageId pageid;
-	// 	for(int i=0; i < end+1; i++){
-	// 		offset=i*8;
- //            key = bytes2int(test.buffer+offset+4);
- //            printf("At eid %d, key at is %d, tmp is %d, page id is %d\n", i, key, tmp, bytes2int(test.buffer+offset+8));
-	// 		//printf("At eid %d, key at offset %d is %d, tmp is %d, page id at offset %d is %d\n", i,offset+4, bytes2int(test.buffer+offset+4), tmp, offset, bytes2int(test.buffer+offset));
-	// 		if(key < tmp)
-	// 			goto exit_end; 	
-	// 		tmp=key;		
-	// 	}
-	// }
-
-	// exit_end:
-
-	// return 0;
-
-
-	// BTNonLeafNode test, sib;
-	// 	//test.count=0;
-	// memset(test.buffer, 0, 1024);
-
-	// unordered_set<int> dup;
-
- //    int end=9;
- //    PageId p=100;
- //    int2bytes(99, test.buffer);
-    
-	// for(int i=0; i < end; i++){
-	// 	int key=rand()%1000;
-	// 	while(dup.find(key)!=dup.end()){
-	// 		key=rand()%1000;
-	// 		cout<<key<<endl;
-	// 	}
-	// 	dup.insert(key);
-	// 	test.insert(key, p+i);
-	// 	printf("Insert key %d, pageid %d\n", key, p+i);
-	// }
-
- //    cout<<"First Pid "<<bytes2int(test.buffer)<<endl;
-	// int key, tmp=0; PageId pageid;
-	// for(int i=0; i < end; i++){
-	// 	int offset=i*8;
- //        key = bytes2int(test.buffer+offset+4);
- //        printf("At eid %d, key at is %d, tmp is %d, page id is %d\n", i, key, tmp, bytes2int(test.buffer+offset+8));
- //        // if(key < tmp)
- //        //     goto exit_end;  
- //        // tmp=key;			
-	// }
-
- //    int loc=0;
- //    int ret = test.locateChildPtr(1000, loc);
- //    cout<<ret<<" "<<loc<<endl;
-
-
-
- //    // key=rand()%1000;
- //    // while(dup.find(key)!=dup.end()){
- //    //  key=rand()%1000;
- //    //  cout<<key<<endl;
- //    // }
- //    // dup.insert(key);
- //    // int midkey;
- //    // test.insertAndSplit(key, p+10, sib, midkey);
- //    // printf("Insert and split key %d, pageid %d, midkey %d\n", key, p+10, midkey);   
-
- //    // cout<<"First Pid "<<bytes2int(test.buffer)<<endl;
- //    // for(int i=0; i<bytes2int(test.buffer+1016); i++){
- //    //     int offset=i*8;
- //    //     key = bytes2int(test.buffer+offset+4);
- //    //     printf("At eid %d, key at is %d, tmp is %d, page id is %d\n", i, key, tmp, bytes2int(test.buffer+offset+8));
- //    // }
-
- //    // cout<<"First Pid "<<bytes2int(sib.buffer)<<endl;
- //    // for(int i=0; i<bytes2int(sib.buffer+1016); i++){
- //    //     int offset=i*8;
- //    //     key = bytes2int(sib.buffer+offset+4);
- //    //     printf("At eid %d, key at is %d, tmp is %d, page id is %d\n", i, key, tmp, bytes2int(sib.buffer+offset+8));
- //    // }
-
-	// // // test locate function
-	// // // int loc=-1;
-	// // // int ret=test.locate(300, loc);
-	// // // cout<<ret<<" "<<loc<<endl;
-
-	// PageFile pf("test.txt", 'w');
-	// test.write(1, pf);
-	// //sib.setNextNodePtr(1);
-	// BTNonLeafNode b;
-	// b.read(1, pf);
- //    cout<<"First Pid "<<bytes2int(b.buffer)<<endl;
-	// for(int i=0; i < b.getKeyCount(); i++){
-	// 	int offset=i*8;
- //        key = bytes2int(b.buffer+offset+4);
- //        printf("BTNonLeafNode b At eid %d, key at is %d, tmp is %d, page id is %d\n", i, key, tmp, bytes2int(b.buffer+offset+8));
-	// }
- //    exit_end:
-
-    return 0;
-}
-
 
 /*
  * Read the content of the node from the page pid in the PageFile pf.
@@ -429,16 +262,12 @@ RC BTNonLeafNode::insert(int key, PageId pid)
     int left, right, mid;
     left = 0;
     right = count;
-
-    //cout<<left<<" "<<right<<endl;
     
     while (left+1 < right)
     {
         mid = (left+right) / 2;
         int offset = mid * 8;
         int midkey = bytes2int(buffer+offset+4);
-        
-        //cout<<"offset "<<offset<<" midkey "<<midkey<<endl;
 
         if (key < midkey)
             right = mid;
@@ -449,8 +278,6 @@ RC BTNonLeafNode::insert(int key, PageId pid)
     int k = bytes2int(buffer+left*8+4);
     if (k >= key)
         right=left;
-    
-    //cout<<k<<" "<<left<<" "<<right<<endl;
 
     int offset = 4 + (right+1) * 8;
     for (int i = 4+(count+1)*8-1; i >= offset; i--)
@@ -458,7 +285,6 @@ RC BTNonLeafNode::insert(int key, PageId pid)
         
     int2bytes(key, buffer+4+right*8);
     int2bytes(pid, buffer+4+right*8+4);
-    //printf("At offset %d pid is %d, and at offset %d key is %d\n", right*8, bytes2int(buffer+right*8), right*8+4, bytes2int(buffer+right*8+4));
 
     int2bytes(++count, buffer+1016);
     
