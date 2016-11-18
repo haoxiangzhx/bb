@@ -13,6 +13,9 @@
 #include "Bruinbase.h"
 #include "PageFile.h"
 #include "RecordFile.h"
+#include <vector>
+
+using namespace std;
              
 /**
  * The data structure to point to a particular entry at a b+tree leaf node.
@@ -97,6 +100,11 @@ class BTreeIndex {
   /// this class is destructed. Make sure to store the values of the two 
   /// variables in disk, so that they can be reconstructed when the index
   /// is opened again later.
+
+  // buffer to store 
+  char buffer[PageFile::PAGE_SIZE];
+  // keep track of sequence of nodes visited
+  vector<PageId> track;
 };
 
 #endif /* BTREEINDEX_H */

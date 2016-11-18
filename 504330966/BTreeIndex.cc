@@ -9,8 +9,11 @@
  
 #include "BTreeIndex.h"
 #include "BTreeNode.h"
+#include <string.h>
 
 using namespace std;
+
+int main{};
 
 /*
  * BTreeIndex constructor
@@ -18,6 +21,8 @@ using namespace std;
 BTreeIndex::BTreeIndex()
 {
     rootPid = -1;
+    treeHeight = 0;
+    memset(buffer, 0, PageFile::PAGE_SIZE);
 }
 
 /*
@@ -29,7 +34,28 @@ BTreeIndex::BTreeIndex()
  */
 RC BTreeIndex::open(const string& indexname, char mode)
 {
-    return 0;
+	RC error = pf.open(indexname, mode);
+	if(error!=0)
+		return error;
+	else{
+		if(pf.endPid()==0){
+			rootPid = -1;
+			treeHeight = 0;
+			memcpy(buffer, &rootPid, sizeof(PageId));
+			memcpy(buffer+sizeof(PageId), &treeHeight, sizeof(int));
+			error = pf.write(0, buffer);
+			if(error!=0)
+				return error;
+		}
+		else{
+			error = pf.read(0, buffer);
+			if(error!=0)
+				return error;
+			memcpy(&rootPid, buffer, sizeof(PageId));
+			memcpy(&treeHeight, buffer+sizeof(PageId), sizeof(int));
+		}
+	}
+    return error;
 }
 
 /*
@@ -38,7 +64,13 @@ RC BTreeIndex::open(const string& indexname, char mode)
  */
 RC BTreeIndex::close()
 {
-    return 0;
+    memcpy(buffer, &rootPid, sizeof(PageId));
+	memcpy(buffer+sizeof(PageId), &treeHeight, sizeof(int));
+	RC error = pf.write(0, buffer);
+	if(error!=0)
+		return error;
+	error = pf.close();
+    return error;
 }
 
 /*
