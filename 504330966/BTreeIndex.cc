@@ -105,6 +105,8 @@ RC BTreeIndex::insert(int key, const RecordId& rid)
 		if (error != 0)
 			return error;
 
+		rootPid = pf.endPid() - 1;
+
 		return 0;
 	}
 
