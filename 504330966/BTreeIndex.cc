@@ -72,7 +72,7 @@ RC BTreeIndex::close()
 	error = pf.close();
     return error;
 }
-
+// 
 /*
  * Insert (key, RecordId) pair to the index.
  * @param key[IN] the key for the value inserted into the index
@@ -81,7 +81,120 @@ RC BTreeIndex::close()
  */
 RC BTreeIndex::insert(int key, const RecordId& rid)
 {
+	RC error = -1;
+	
+	if (rootPid == -1)
+	{
+		rootPid = pf.endPid();
+		treeHeight++;
+
+		BTNonLeafNode nln;
+		nln.initializeRoot(pf.endPid()+1, key, pf.endPid()+2);
+		error = nln.write(pf.endPid(), pf);
+		if (error != 0)
+			return error;
+
+		char temp[PageFile::PAGE_SIZE];
+		error = pf.write(pf.endPid(), temp);
+		if (error != 0)
+			return error;
+
+		BTLeafNode ln;
+		ln.insert(key, rid);
+		error = ln.write(pf.endPid(), pf);
+		if (error != 0)
+			return error;
+
+		return 0;
+	}
+
+	stack<PageId> path;
+    path.push(rootPid);
+    BTNonLeafNode nln;
+    PageId pid = rootPid;
+
+    for(int i=0; i<treeHeight; i++){
+    	error = nln.read(pid, pf);
+    	if(error != 0)
+    		return error;
+    	error = nln.locateChildPtr(key, pid);
+    	if(error != 0)
+    		return error;
+    	path.push(pid);
+    }
+
+    BTLeafNode ln;
+    error = ln.read(pid, pf);
+    if (error != 0)
+    	return error;
+
+    if (ln.getKeyCount() < 80)
+    {
+    	ln.insert(key, rid);
+    	ln.write(pid, pf);
+    	if (error != 0)
+    		return error;
+    	return 0;
+    }
+
+    BTLeafNode sibling;
+    int siblingKey;
+    ln.insertAndSplit(key, rid, sibling, siblingKey);
+    ln.write(pid, pf);
+	if (error != 0)
+    	return error;
+    sibling.write(pf.endPid(), pf);
+	if (error != 0)
+    	return error;
+
+    error = insertParent(path, siblingKey, pf.endPid()-1);
+    if (error != 0)
+    	return error;
+
     return 0;
+}
+
+RC BTreeIndex::insertParent(stack<PageId> path, int key, PageId pid)
+{
+	RC error = -1;
+	if (path.empty())
+	{
+		BTNonLeafNode nln;
+		nln.initializeRoot(rootPid, key, pid);
+		error = nln.write(pf.endPid(), pf);
+		if (error != 0)
+			return error;
+		return 0;
+	}
+
+	PageId parent = path.top();
+	path.pop();
+
+	BTNonLeafNode nln;
+	error = nln.read(parent, pf);
+	if (error != 0)
+		return error;
+
+	if (nln.getKeyCount() < 120)
+	{
+		nln.insert(key, pid);
+		nln.write(parent, pf);
+		if (error != 0)
+			return error;
+		return 0;
+	}
+
+	BTNonLeafNode sibling;
+	int midKey;
+	nln.insertAndSplit(key, pid, sibling, midKey);
+	nln.write(parent, pf);
+	if (error != 0)
+		return error;
+	sibling.write(pf.endPid(), pf);
+	if (error != 0)
+		return error;
+
+	return insertParent(path, midKey, pf.endPid()-1);
 }
 
 /**
@@ -108,7 +221,7 @@ RC BTreeIndex::locate(int searchKey, IndexCursor& cursor)
     // read through non leafnode to get pid of leafnode
     PageId pid = rootPid;
     RC error = -1;
-    for(int i=0; i<treeHeight-1; i++){
+    for(int i=0; i<treeHeight; i++){
     	error = nonleafnode.read(pid, pf);
     	if(error != 0)
     		return error;

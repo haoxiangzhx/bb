@@ -13,7 +13,7 @@
 #include "Bruinbase.h"
 #include "PageFile.h"
 #include "RecordFile.h"
-#include <vector>
+#include <stack>
 
 using namespace std;
              
@@ -91,6 +91,8 @@ class BTreeIndex {
    */
   RC readForward(IndexCursor& cursor, int& key, RecordId& rid);
   
+  RC insertParent(stack<PageId> path, int key, PageId pid);
+
  private:
   PageFile pf;         /// the PageFile used to store the actual b+tree in disk
 
@@ -103,8 +105,6 @@ class BTreeIndex {
 
   // buffer to store 
   char buffer[PageFile::PAGE_SIZE];
-  // keep track of sequence of nodes visited
-  vector<PageId> track;
 };
 
 #endif /* BTREEINDEX_H */
