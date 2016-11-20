@@ -94,8 +94,9 @@ RC BTreeIndex::insert(int key, const RecordId& rid)
 		if (error != 0)
 			return error;
 
-		char temp[PageFile::PAGE_SIZE];
-		error = pf.write(pf.endPid(), temp);
+		BTLeafNode temp;
+		temp.setNextNodePtr(pf.endPid()+1);
+		error = temp.write(pf.endPid(), pf);
 		if (error != 0)
 			return error;
 
@@ -104,8 +105,6 @@ RC BTreeIndex::insert(int key, const RecordId& rid)
 		error = ln.write(pf.endPid(), pf);
 		if (error != 0)
 			return error;
-
-		rootPid = pf.endPid() - 1;
 
 		return 0;
 	}
@@ -142,6 +141,9 @@ RC BTreeIndex::insert(int key, const RecordId& rid)
     BTLeafNode sibling;
     int siblingKey;
     ln.insertAndSplit(key, rid, sibling, siblingKey);
+    sibling.setNextNodePtr(ln.getNextNodePtr());
+    ln.setNextNodePtr(pf.endPid());
+
     ln.write(pid, pf);
 	if (error != 0)
     	return error;
@@ -166,6 +168,9 @@ RC BTreeIndex::insertParent(stack<PageId> path, int key, PageId pid)
 		error = nln.write(pf.endPid(), pf);
 		if (error != 0)
 			return error;
+
+		rootPid = pf.endPid() - 1;
+
 		return 0;
 	}
 
