@@ -10,10 +10,19 @@
 #include "BTreeIndex.h"
 #include "BTreeNode.h"
 #include <string.h>
+#include <iostream>
 
 using namespace std;
 
-int main{};
+int main(){
+	BTreeIndex index = BTreeIndex();
+	RC ret = index.open("file", 'w');
+	cout<<"ret of index.open() is "<<ret<<endl;
+	RecordId rid = {11, 10};
+	int key = 5;
+	ret = index.insert(key, rid);
+	cout<<"ret of index.insert() is "<<ret<<endl;
+}
 
 /*
  * BTreeIndex constructor

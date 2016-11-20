@@ -12,6 +12,7 @@
 
 #include "RecordFile.h"
 #include "PageFile.h"
+#include <string.h>
 
 const int PAIR_SIZE=12;
 /**
@@ -19,6 +20,10 @@ const int PAIR_SIZE=12;
  */
 class BTLeafNode {
   public:
+    BTLeafNode(){
+        memset(buffer, 0, PageFile::PAGE_SIZE);
+    }
+
    /**
     * Insert the (key, rid) pair to the node.
     * Remember that all keys inside a B+tree node should be kept sorted.
@@ -115,6 +120,9 @@ class BTLeafNode {
  */
 class BTNonLeafNode {
   public:
+    BTNonLeafNode(){
+        memset(buffer, 0, PageFile::PAGE_SIZE);
+    }
    /**
     * Insert a (key, pid) pair to the node.
     * Remember that all keys inside a B+tree node should be kept sorted.
