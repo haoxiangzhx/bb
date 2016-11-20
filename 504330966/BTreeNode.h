@@ -15,6 +15,11 @@
 #include <string.h>
 
 const int PAIR_SIZE=12;
+
+void int2bytes(int n, char* bytes);
+
+int bytes2int(char* bytes);
+
 /**
  * BTLeafNode: The class representing a B+tree leaf node.
  */
@@ -187,7 +192,7 @@ class BTNonLeafNode {
     */
     RC write(PageId pid, PageFile& pf);
 
-  private:
+
    /**
     * The main memory buffer for loading the content of the disk page 
     * that contains the node.

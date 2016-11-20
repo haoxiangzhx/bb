@@ -11,17 +11,102 @@
 #include "BTreeNode.h"
 #include <string.h>
 #include <iostream>
+#include <queue>
+#include <unordered_set>
 
 using namespace std;
+
+void printLeaf(PageId pid, const PageFile& pf, queue<PageId>& q);
+void printNonLeaf(PageId pid, const PageFile& pf, queue<PageId>& q);
 
 int main(){
 	BTreeIndex index = BTreeIndex();
 	RC ret = index.open("file", 'w');
 	cout<<"ret of index.open() is "<<ret<<endl;
-	RecordId rid = {11, 10};
-	int key = 5;
-	ret = index.insert(key, rid);
-	cout<<"ret of index.insert() is "<<ret<<endl;
+	RecordId rid;
+	int key, count=29, rem=1000;
+	unordered_set<int> dup;
+	for(int i=0; i<count; i++){
+		key = rand()%rem;
+		while(dup.find(key)!=dup.end()){
+			key=rand()%rem;
+			cout<<key<<endl;
+		}
+		dup.insert(key);
+		rid = {100+i, 200+i};
+		ret = index.insert(key, rid);
+		//printf("insert key %d, pid %d and sid %d\n", key, rid.pid, rid.sid);
+		if(ret != 0)
+			cout<<"failed to insert and ret of index.insert() is "<<ret<<endl;
+	}
+
+	// get rootpid and tree height
+	printf("Rootpid is %d and Treeheight is %d\n", index.getRootPid(), index.getTreeHeight());
+
+	// get root node info
+	queue<PageId> q;
+	printNonLeaf(index.getRootPid(), index.getPageFile(), q);
+	int h = index.getTreeHeight();
+	PageFile file = index.getPageFile();
+	while(h > 0){
+		h--;
+		if(h==1){ //leaf node
+			int size=q.size();
+			for(int i=0; i<size; i++){
+				PageId id = q.front(); q.pop();
+				cout<<"pid is "<<id<<endl;
+				printLeaf(id, file, q);
+			}
+		}
+		else{ //nonleaf node
+			int size=q.size();
+			for(int i=0; i<size; i++){
+				PageId id = q.front(); q.pop();
+				cout<<"pid is "<<id<<endl;
+				printNonLeaf(id, file, q);
+			}
+		}
+	}
+	// printLeaf(3, index.getPageFile());
+	// printLeaf(4, index.getPageFile());
+	IndexCursor cursor;
+	RC rc = index.locate(886, cursor);
+	printf("Returned rc is %d, cursor.pid is %d and cursor.eid is %d\n", rc, cursor.pid, cursor.eid);
+
+	cursor = {120, 2};
+	int k;
+	RecordId r;
+	rc = index.readForward(cursor, k, r);
+	printf("rc is %d, cursor pid is %d, cursor eid is %d, key is %d and rid.pid is %d, rid.sid is %d\n", rc, cursor.pid, cursor.eid, k, r.pid, r.sid);
+}
+
+void printNonLeaf(PageId pid, const PageFile& pf, queue<PageId> &q){
+	BTNonLeafNode nl = BTNonLeafNode();
+	nl.read(pid, pf);
+	for(int i=0; i<nl.getKeyCount(); i++){
+		if(i==0){
+			q.push(bytes2int(nl.buffer));
+			cout<<"First pid is "<<bytes2int(nl.buffer)<<endl;
+		}
+		q.push(bytes2int(nl.buffer+i*8+8));
+		printf("At offset %d, key is %d and pid is %d\n", i, bytes2int(nl.buffer+i*8+4), bytes2int(nl.buffer+i*8+8));
+	}
+}
+
+// print leaf node information
+void printLeaf(PageId pid, const PageFile& pf, queue<PageId>& q){
+	BTLeafNode l = BTLeafNode();
+	l.read(pid, pf);
+	int eid = 0, key;
+	RecordId rid;
+	cout<<"l.getKeyCount() is "<<l.getKeyCount()<<endl;
+	for(eid; eid<l.getKeyCount(); eid++){
+		l.readEntry(eid, key, rid);
+		printf("At eid %d, key is %d, pid is %d and sid is %d\n", eid, key, rid.pid, rid.sid);
+	}
+
+	PageId next = l.getNextNodePtr();
+	cout<<"nextnodeptr is "<<next<<endl;
 }
 
 /*
@@ -95,7 +180,7 @@ RC BTreeIndex::insert(int key, const RecordId& rid)
 	if (rootPid == -1)
 	{
 		rootPid = pf.endPid();
-		treeHeight++;
+		treeHeight=2;
 
 		BTNonLeafNode nln;
 		nln.initializeRoot(pf.endPid()+1, key, pf.endPid()+2);
@@ -123,7 +208,7 @@ RC BTreeIndex::insert(int key, const RecordId& rid)
     BTNonLeafNode nln;
     PageId pid = rootPid;
 
-    for(int i=0; i<treeHeight; i++){
+    for(int i=0; i<treeHeight-1; i++){
     	error = nln.read(pid, pf);
     	if(error != 0)
     		return error;
@@ -131,14 +216,16 @@ RC BTreeIndex::insert(int key, const RecordId& rid)
     	if(error != 0)
     		return error;
     	path.push(pid);
+    	//cout<<"push pid "<<pid<<endl;
     }
+    path.pop();
 
     BTLeafNode ln;
     error = ln.read(pid, pf);
     if (error != 0)
     	return error;
 
-    if (ln.getKeyCount() < 80)
+    if (ln.getKeyCount() < 4)
     {
     	ln.insert(key, rid);
     	ln.write(pid, pf);
@@ -157,6 +244,7 @@ RC BTreeIndex::insert(int key, const RecordId& rid)
 	if (error != 0)
     	return error;
     sibling.write(pf.endPid(), pf);
+    //exit(0);
 	if (error != 0)
     	return error;
 
@@ -164,6 +252,9 @@ RC BTreeIndex::insert(int key, const RecordId& rid)
     if (error != 0)
     	return error;
 
+    // printf("ln count is %d and sibling count is %d and pid is %d\n", ln.getKeyCount(), sibling.getKeyCount(), pid);
+
+    //exit(0);
     return 0;
 }
 
@@ -179,6 +270,7 @@ RC BTreeIndex::insertParent(stack<PageId> path, int key, PageId pid)
 			return error;
 
 		rootPid = pf.endPid() - 1;
+		treeHeight++;
 
 		return 0;
 	}
@@ -191,7 +283,7 @@ RC BTreeIndex::insertParent(stack<PageId> path, int key, PageId pid)
 	if (error != 0)
 		return error;
 
-	if (nln.getKeyCount() < 120)
+	if (nln.getKeyCount() < 6)
 	{
 		nln.insert(key, pid);
 		nln.write(parent, pf);
@@ -237,7 +329,7 @@ RC BTreeIndex::locate(int searchKey, IndexCursor& cursor)
     // read through non leafnode to get pid of leafnode
     PageId pid = rootPid;
     RC error = -1;
-    for(int i=0; i<treeHeight; i++){
+    for(int i=0; i<treeHeight-1; i++){
     	error = nonleafnode.read(pid, pf);
     	if(error != 0)
     		return error;
@@ -252,8 +344,11 @@ RC BTreeIndex::locate(int searchKey, IndexCursor& cursor)
     if(error != 0)
     	return error;
     error = leafnode.locate(searchKey, eid);
-    if(error != 0)
+    if(error != 0){
+    	cursor.pid = pid;
+    	cursor.eid = eid;
     	return error;
+    }
     else{
     	cursor.pid = pid;
     	cursor.eid = eid;

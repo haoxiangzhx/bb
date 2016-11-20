@@ -93,6 +93,18 @@ class BTreeIndex {
   
   RC insertParent(stack<PageId> path, int key, PageId pid);
 
+  PageFile getPageFile(){
+    return pf;
+  }
+
+  PageId getRootPid(){
+    return rootPid;
+  }
+
+  int getTreeHeight(){
+    return treeHeight;
+  }
+
  private:
   PageFile pf;         /// the PageFile used to store the actual b+tree in disk
 

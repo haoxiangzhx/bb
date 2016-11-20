@@ -178,6 +178,8 @@ RC BTLeafNode::locate(int searchKey, int& eid)
  */
 RC BTLeafNode::readEntry(int eid, int& key, RecordId& rid)
 {
+    if(eid >= getKeyCount())
+        return RC_NO_SUCH_RECORD;
     int offset = eid * 12;
     
     key = bytes2int(buffer+offset);
