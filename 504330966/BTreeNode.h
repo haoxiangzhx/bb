@@ -12,7 +12,7 @@
 
 #include "RecordFile.h"
 #include "PageFile.h"
-#include <string.h>
+#include <cstring>
 
 const int PAIR_SIZE=12;
 

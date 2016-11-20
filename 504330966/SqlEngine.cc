@@ -14,6 +14,7 @@
 #include <fstream>
 #include "Bruinbase.h"
 #include "SqlEngine.h"
+#include "BTreeIndex.h"
 
 using namespace std;
 
@@ -51,6 +52,9 @@ RC SqlEngine::select(int attr, const string& table, const vector<SelCond>& cond)
     return rc;
   }
 
+  BTreeIndex btidx;
+  if (btidx.open(table+".idx", 'r') < 0)
+  {
   // scan the table file from the beginning
   rid.pid = rid.sid = 0;
   count = 0;
@@ -133,14 +137,35 @@ RC SqlEngine::select(int attr, const string& table, const vector<SelCond>& cond)
 RC SqlEngine::load(const string& table, const string& loadfile, bool index)
 {
   /* your code here */
+  RC rc;
+
   RecordFile rf;
   rf.open(table+".tbl", 'w');
 
+  const char *file = loadfile.c_str();
+  ifstream infile(file);
+  string line;
+
   if (!index)
   {
-    const char *file = loadfile.c_str();
-    ifstream infile(file);
-    string line;
+    while (getline(infile, line))
+    {
+        int key;
+        string value;
+        parseLoadLine(line, key, value);
+
+        RecordId rid = rf.endRid();
+        rc = rf.append(key, value, rid);
+        if (rc != 0)
+          return rc;
+    }
+  }
+  else
+  {
+    BTreeIndex btidx;
+    rc = btidx.open(table+".idx", 'w');
+    if (rc != 0)
+      return rc;
 
     while (getline(infile, line))
     {
@@ -149,12 +174,29 @@ RC SqlEngine::load(const string& table, const string& loadfile, bool index)
         parseLoadLine(line, key, value);
 
         RecordId rid = rf.endRid();
-        rf.append(key, value, rid);
+        rc = rf.append(key, value, rid);
+        if (rc != 0)
+          return rc;
+        rc = btidx.insert(key, rid);
+        if (rc != 0)
+          return rc;
     }
+
+    rc = btidx.close();
+    if (rc != 0) 
+      return rc;
   }
 
-  rf.close();
+  rc = rf.close();
+  if (rc != 0)
+    return rc;
+
   return 0;
+  }
+  else
+  {
+    
+  }
 }
 
 RC SqlEngine::parseLoadLine(const string& line, int& key, string& value)

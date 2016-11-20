@@ -9,7 +9,6 @@
  
 #include "BTreeIndex.h"
 #include "BTreeNode.h"
-#include <string.h>
 #include <iostream>
 #include <queue>
 #include <unordered_set>
@@ -131,24 +130,24 @@ RC BTreeIndex::open(const string& indexname, char mode)
 	RC error = pf.open(indexname, mode);
 	if(error!=0)
 		return error;
-	else{
-		if(pf.endPid()==0){
-			rootPid = -1;
-			treeHeight = 0;
-			memcpy(buffer, &rootPid, sizeof(PageId));
-			memcpy(buffer+sizeof(PageId), &treeHeight, sizeof(int));
-			error = pf.write(0, buffer);
-			if(error!=0)
-				return error;
-		}
-		else{
-			error = pf.read(0, buffer);
-			if(error!=0)
-				return error;
-			memcpy(&rootPid, buffer, sizeof(PageId));
-			memcpy(&treeHeight, buffer+sizeof(PageId), sizeof(int));
-		}
+
+	if(pf.endPid()==0){
+		rootPid = -1;
+		treeHeight = 0;
+		memcpy(buffer, &rootPid, sizeof(PageId));
+		memcpy(buffer+sizeof(PageId), &treeHeight, sizeof(int));
+		error = pf.write(0, buffer);
+		if(error!=0)
+			return error;
 	}
+	else{
+		error = pf.read(0, buffer);
+		if(error!=0)
+			return error;
+		memcpy(&rootPid, buffer, sizeof(PageId));
+		memcpy(&treeHeight, buffer+sizeof(PageId), sizeof(int));
+	}
+	
     return error;
 }
 
@@ -216,7 +215,6 @@ RC BTreeIndex::insert(int key, const RecordId& rid)
     	if(error != 0)
     		return error;
     	path.push(pid);
-    	//cout<<"push pid "<<pid<<endl;
     }
     path.pop();
 
@@ -244,7 +242,6 @@ RC BTreeIndex::insert(int key, const RecordId& rid)
 	if (error != 0)
     	return error;
     sibling.write(pf.endPid(), pf);
-    //exit(0);
 	if (error != 0)
     	return error;
 
@@ -252,9 +249,6 @@ RC BTreeIndex::insert(int key, const RecordId& rid)
     if (error != 0)
     	return error;
 
-    // printf("ln count is %d and sibling count is %d and pid is %d\n", ln.getKeyCount(), sibling.getKeyCount(), pid);
-
-    //exit(0);
     return 0;
 }
 

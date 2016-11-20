@@ -1,7 +1,6 @@
 #include "BTreeNode.h"
 #include <iostream>
-#include <stdio.h>
-#include <string.h>
+#include <cstdio>
 #include <unordered_set>
 
 using namespace std;
