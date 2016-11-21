@@ -132,6 +132,7 @@ RC SqlEngine::select(int attr, const string& table, const vector<SelCond>& cond)
   exit_select:
   rf.close();
   return rc;
+  }
 }
 
 RC SqlEngine::load(const string& table, const string& loadfile, bool index)
@@ -192,11 +193,6 @@ RC SqlEngine::load(const string& table, const string& loadfile, bool index)
     return rc;
 
   return 0;
-  }
-  else
-  {
-    
-  }
 }
 
 RC SqlEngine::parseLoadLine(const string& line, int& key, string& value)
