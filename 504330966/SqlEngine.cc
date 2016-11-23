@@ -12,6 +12,7 @@
 #include <cstdlib>
 #include <iostream>
 #include <fstream>
+#include <algorithm>
 #include "Bruinbase.h"
 #include "SqlEngine.h"
 #include "BTreeIndex.h"
@@ -21,6 +22,8 @@ using namespace std;
 // external functions and variables for load file and sql command parsing 
 extern FILE* sqlin;
 int sqlparse(void);
+
+vector<int> getEQ(const vector<SelCond>& cond);
 
 
 RC SqlEngine::run(FILE* commandline)
@@ -159,7 +162,17 @@ RC SqlEngine::select(int attr, const string& table, const vector<SelCond>& cond)
         if (cond[i].comp == SelCond::NE)
           goto without_index;
 
+      vector<int> eq = getEQ(cond);
+      if (eq.size() == 1)
+      {
+        return 0;
+      }
+      else if (eq.size() > 1)
+        return 0;
+      else
+      {
 
+      }
 
     }
   }
@@ -264,4 +277,19 @@ RC SqlEngine::parseLoadLine(const string& line, int& key, string& value)
     if (loc != string::npos) { value.erase(loc); }
 
     return 0;
+}
+
+vector<int> getEQ(const vector<SelCond>& cond)
+{
+  vector<int> res;
+  for (int i = 0; i < cond.size(); i++)
+  {
+    if (cond[i].comp == SelCond::EQ)
+    {
+      int temp = atoi(cond[i].value);
+      if (find(res.begin(), res.end(), temp) == res.end())
+        res.push_back(temp);
+    }
+  }
+  return res;
 }
