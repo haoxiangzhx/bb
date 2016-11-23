@@ -55,6 +55,7 @@ RC SqlEngine::select(int attr, const string& table, const vector<SelCond>& cond)
   BTreeIndex btidx;
   if (btidx.open(table+".idx", 'r') < 0)
   {
+  without_index:
   // scan the table file from the beginning
   rid.pid = rid.sid = 0;
   count = 0;
@@ -132,6 +133,35 @@ RC SqlEngine::select(int attr, const string& table, const vector<SelCond>& cond)
   exit_select:
   rf.close();
   return rc;
+  }
+  else
+  {
+    for (int i = 0; i < cond.size(); i++)
+      if (cond[i].attr == 2)  // condition on value
+        goto without_index;
+
+    if (cond.size() == 1) // only one condition
+    {
+      if (cond[0].comp == SelCond::NE) // key <>
+        goto without_index;
+      else if (cond[0].comp == SelCond::EQ)  // key =
+      {
+
+      }
+      else  // key <, >, <=, >=
+      {
+
+      }
+    }
+    else  // more than one condition
+    {
+      for (int i = 0; i < cond.size(); i++)
+        if (cond[i].comp == SelCond::NE)
+          goto without_index;
+
+
+
+    }
   }
 }
 
