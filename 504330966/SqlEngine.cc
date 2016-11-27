@@ -155,7 +155,7 @@ RC SqlEngine::select(int attr, const string& table, const vector<SelCond>& cond)
   {
     // condition only on value
     vector<SelCond> valueCond = getCondOnValue(cond);
-    if (valueCond.size() == cond.size())
+    if (cond.size() > 0 && valueCond.size() == cond.size())
         goto without_index;
 
     vector<int> ne = getEQorNE(cond, SelCond::NE);
@@ -178,9 +178,6 @@ RC SqlEngine::select(int attr, const string& table, const vector<SelCond>& cond)
         error = btidx.readForward(cursor, k, r);
         if(error != 0)
           return error;
-        if(k != eq[0])
-          return RC_NO_SUCH_RECORD;
-
         if (valueCond.size() > 0)
         {
           if((rc = rf.read(r, key, value)) != 0)
@@ -189,6 +186,9 @@ RC SqlEngine::select(int attr, const string& table, const vector<SelCond>& cond)
             return 0;
         }
 
+        if(k != eq[0]){
+          return RC_NO_SUCH_RECORD;
+        }
         else{
           if(attr == 1)
             fprintf(stdout, "%d\n", k);
@@ -235,6 +235,9 @@ RC SqlEngine::select(int attr, const string& table, const vector<SelCond>& cond)
       rc = btidx.locate(max, maxCursor);
     }
 
+    // cout<<min<<" "<<max<<endl;
+    // printCursor(minCursor);
+    // printCursor(maxCursor);
     if(attr == 4){
       count = 0;
 
@@ -274,13 +277,16 @@ RC SqlEngine::select(int attr, const string& table, const vector<SelCond>& cond)
       fprintf(stdout, "%d\n", count);
     }
   else{
+
     while (minCursor < maxCursor)
     {
+      //cout<<"279"<<endl;
       RC r = btidx.readForward(minCursor, key, rid);
       if(r != 0){
         break;
       }
 
+      //cout<<"284"<<endl;
       bool notEq = false;
       for (int i = 0; i < ne.size(); i++){
         if (ne[i] == key){
@@ -288,11 +294,15 @@ RC SqlEngine::select(int attr, const string& table, const vector<SelCond>& cond)
           break;
         }
       }
+      //cout<<"292"<<endl;
       if(notEq)
         continue;
+      //cout<<"294"<<endl;
 
+      //cout<<"valueCond.size() "<<valueCond.size()<<endl;
       if (valueCond.size() > 0)
       {
+        //cout<<"enter 296"<<endl;
         if((rc = rf.read(rid, key, value)) != 0)
           return rc;
         if (skipTuple(valueCond, value))
@@ -433,11 +443,13 @@ vector<int> getEQorNE(const vector<SelCond>& cond, SelCond::Comparator comp)
   vector<int> res;
   for (int i = 0; i < cond.size(); i++)
   {
-    if (cond[i].comp == comp)
-    {
-      int temp = atoi(cond[i].value);
-      if (find(res.begin(), res.end(), temp) == res.end())
-        res.push_back(temp);
+    if(cond[i].attr == 1){
+      if (cond[i].comp == comp)
+      {
+        int temp = atoi(cond[i].value);
+        if (find(res.begin(), res.end(), temp) == res.end())
+          res.push_back(temp);
+      }
     }
   }
   return res;
@@ -448,22 +460,24 @@ int getUpperBound(const vector<SelCond> cond, SelCond &res)
   int min = INT_MAX;
   for (int i = 0; i < cond.size(); i++)
   {
-    if (cond[i].comp == SelCond::LT)
-    {
-      int temp = atoi(cond[i].value);
-      if ((temp < min) || (temp == min && res.comp == SelCond::LE))
+    if(cond[i].attr == 1){
+      if (cond[i].comp == SelCond::LT)
       {
-        min = temp;
-        res = cond[i];
+        int temp = atoi(cond[i].value);
+        if ((temp < min) || (temp == min && res.comp == SelCond::LE))
+        {
+          min = temp;
+          res = cond[i];
+        }
       }
-    }
-    else if (cond[i].comp == SelCond::LE)
-    {
-      int temp = atoi(cond[i].value);
-      if (temp < min)
+      else if (cond[i].comp == SelCond::LE)
       {
-        min = temp;
-        res = cond[i];
+        int temp = atoi(cond[i].value);
+        if (temp < min)
+        {
+          min = temp;
+          res = cond[i];
+        }
       }
     }
   }
@@ -475,22 +489,24 @@ int getLowerBound(const vector<SelCond> cond, SelCond &res)
   int max = INT_MIN;
   for (int i = 0; i < cond.size(); i++)
   {
-    if (cond[i].comp == SelCond::GT)
-    {
-      int temp = atoi(cond[i].value);
-      if ((temp > max) || (temp == max && res.comp == SelCond::GE))
+    if(cond[i].attr == 1){
+      if (cond[i].comp == SelCond::GT)
       {
-        max = temp;
-        res = cond[i];
+        int temp = atoi(cond[i].value);
+        if ((temp > max) || (temp == max && res.comp == SelCond::GE))
+        {
+          max = temp;
+          res = cond[i];
+        }
       }
-    }
-    else if (cond[i].comp == SelCond::GE)
-    {
-      int temp = atoi(cond[i].value);
-      if (temp > max)
+      else if (cond[i].comp == SelCond::GE)
       {
-        max = temp;
-        res = cond[i];
+        int temp = atoi(cond[i].value);
+        if (temp > max)
+        {
+          max = temp;
+          res = cond[i];
+        }
       }
     }
   }
@@ -523,10 +539,12 @@ bool operator < (const IndexCursor& c1, const IndexCursor& c2)
 
 bool skipTuple(vector<SelCond> cond, string value)
 {
+  //cout<<"enter skipTuple"<<endl;
   bool res = false;
   for (int i = 0; i < cond.size(); i++)
   {
     int diff = strcmp(value.c_str(), cond[i].value);
+    //cout<<"value.c_str " << value.c_str()<<" and cond.value "<<cond[i].value<<endl;
     switch (cond[i].comp) 
     {
       case SelCond::EQ:
