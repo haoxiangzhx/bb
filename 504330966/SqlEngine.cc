@@ -25,7 +25,7 @@ extern FILE* sqlin;
 int sqlparse(void);
 
 bool operator < (const IndexCursor& c1, const IndexCursor& c2);
-vector<int> getEQ(const vector<SelCond>& cond);
+vector<int> getEQorNE(const vector<SelCond>& cond, Comparator comp);
 int getUpperBound(const vector<SelCond> cond, SelCond &res);
 int getLowerBound(const vector<SelCond> cond, SelCond &res);
 void printTuple(int &attr, int &key, string &value);
@@ -154,14 +154,20 @@ RC SqlEngine::select(int attr, const string& table, const vector<SelCond>& cond)
     // condition on value or comp = NE
     for (int i = 0; i < cond.size(); i++)
     {
-      if ((cond[i].attr == 2) || (cond[i].comp == SelCond::NE))
+      if (cond[i].attr == 2)
         goto without_index;   
     }
 
+    vector<int> ne = getEQorNE(cond, SelCond::NE);
+
     // EQ
-    vector<int> eq = getEQ(cond);
+    vector<int> eq = getEQorNE(cond, SelCond::EQ);
     if (eq.size() == 1)
     {
+      for (int i = 0; i < ne.size(); i++)
+        if (ne[i] == eq[0])
+          return 0;
+
       IndexCursor cursor = {-1, -1};
       RC error = btidx.locate(eq[0], cursor);
       if(error != 0)
@@ -242,6 +248,10 @@ RC SqlEngine::select(int attr, const string& table, const vector<SelCond>& cond)
           cout<<"enter 241"<<endl;
           break;
         }
+
+        for (int i = 0; i < ne.size(); i++)
+          if (ne[i] == key)
+            continue;
       //printCursor(minCursor);
         //rf.read(rid, key, value);
        // printTuple(attr, key, value);
@@ -276,6 +286,11 @@ RC SqlEngine::select(int attr, const string& table, const vector<SelCond>& cond)
         //cout<<"rc value is "<<r<<endl;
         break;
       }
+
+      for (int i = 0; i < ne.size(); i++)
+        if (ne[i] == key)
+          continue;
+
       //printCursor(minCursor);
       rf.read(rid, key, value);
       printTuple(attr, key, value);
@@ -406,12 +421,12 @@ RC SqlEngine::parseLoadLine(const string& line, int& key, string& value)
     return 0;
 }
 
-vector<int> getEQ(const vector<SelCond>& cond)
+vector<int> getEQorNE(const vector<SelCond>& cond, Comparator comp)
 {
   vector<int> res;
   for (int i = 0; i < cond.size(); i++)
   {
-    if (cond[i].comp == SelCond::EQ)
+    if (cond[i].comp == comp)
     {
       int temp = atoi(cond[i].value);
       if (find(res.begin(), res.end(), temp) == res.end())
