@@ -90,7 +90,6 @@ RC BTLeafNode::insert(int key, const RecordId& rid)
     	right=left;
     
     int offset = (right+1) * 12;
-    //printf("begin i is %d, end i is %d\n", count*12-1, offset);
     for (int i = (count+1)*12-1; i >= offset; i--)
         buffer[i] = buffer[i-12];
         
@@ -99,9 +98,7 @@ RC BTLeafNode::insert(int key, const RecordId& rid)
     int2bytes(rid.sid, buffer+right*12+8);
 
     int2bytes(++count, buffer+1016);
-
-    //printf("Offset is %d, count is %d, key is %d\n", right, count, key);
-    
+   
     return 0; 
 }
 
@@ -149,7 +146,6 @@ RC BTLeafNode::locate(int searchKey, int& eid)
     int i = 0, count = getKeyCount();
     while (i < count)
     {
-    	///cout<<i<<endl;
         int key = bytes2int(buffer+i*PAIR_SIZE);
         if (searchKey > key)
             i += 1;

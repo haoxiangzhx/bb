@@ -88,18 +88,6 @@ RC BTreeIndex::insert(int key, const RecordId& rid)
 		rootPid = pf.endPid();
 		treeHeight=1;
 
-		// BTNonLeafNode nln;
-		// nln.initializeRoot(pf.endPid()+1, key, pf.endPid()+2);
-		// error = nln.write(pf.endPid(), pf);
-		// if (error != 0)
-		// 	return error;
-
-		// BTLeafNode temp;
-		// temp.setNextNodePtr(pf.endPid()+1);
-		// error = temp.write(pf.endPid(), pf);
-		// if (error != 0)
-		// 	return error;
-
 		BTLeafNode ln;
 		ln.insert(key, rid);
 		error = ln.write(pf.endPid(), pf);
@@ -292,11 +280,7 @@ RC BTreeIndex::readForward(IndexCursor& cursor, int& key, RecordId& rid)
 	if(error != 0)
 		return error;
 
-	//cout<<"Line 382 key "<<key<<endl;
-	//printR(rid);
 	error = leafnode.readEntry(eid, key, rid);
-	//cout<<"Line 385 key "<<key<<endl;
-	//printR(rid);
 	if(error != 0)
 		return error;
 
@@ -311,7 +295,6 @@ RC BTreeIndex::readForward(IndexCursor& cursor, int& key, RecordId& rid)
 
 	cursor.pid = pid;
 	cursor.eid = eid;
-	//printf("After action, cursor.pid is %d and cursor.eid is %d\n", cursor.pid, cursor.eid);
-
+	
     return 0;
 }
