@@ -14,6 +14,88 @@
 #include <unordered_set>
 
 using namespace std;
+
+void printLeaf(PageId pid, const PageFile& pf, queue<PageId>& q);
+void printNonLeaf(PageId pid, const PageFile& pf, queue<PageId>& q);
+
+// int main(){
+// 	BTreeIndex index = BTreeIndex();
+// 	RC ret = index.open("mv.idx", 'w');
+// 	cout<<"ret of index.open() is "<<ret<<endl;
+// 	RecordId rid;
+	
+
+// 	// get rootpid and tree height
+// 	printf("Rootpid is %d and Treeheight is %d\n", index.getRootPid(), index.getTreeHeight());
+
+// 	// get root node info
+// 	queue<PageId> q;
+// 	printNonLeaf(index.getRootPid(), index.getPageFile(), q);
+// 	int h = index.getTreeHeight();
+// 	PageFile file = index.getPageFile();
+// 	while(h > 0){
+// 		h--;
+// 		if(h==1){ //leaf node
+// 			int size=q.size();
+// 			for(int i=0; i<size; i++){
+// 				PageId id = q.front(); q.pop();
+// 				cout<<"pid is "<<id<<endl;
+// 				printLeaf(id, file, q);
+// 			}
+// 		}
+// 		else{ //nonleaf node
+// 			int size=q.size();
+// 			for(int i=0; i<size; i++){
+// 				PageId id = q.front(); q.pop();
+// 				cout<<"pid is "<<id<<endl;
+// 				printNonLeaf(id, file, q);
+// 			}
+// 		}
+// 	}
+// 	// printLeaf(3, index.getPageFile());
+// 	// printLeaf(4, index.getPageFile());
+// 	index.close();
+
+// 	IndexCursor cursor;
+// 	RC rc = index.locate(886, cursor);
+// 	printf("Returned rc is %d, cursor.pid is %d and cursor.eid is %d\n", rc, cursor.pid, cursor.eid);
+
+// 	cursor = {120, 2};
+// 	int k;
+// 	RecordId r;
+// 	rc = index.readForward(cursor, k, r);
+// 	printf("rc is %d, cursor pid is %d, cursor eid is %d, key is %d and rid.pid is %d, rid.sid is %d\n", rc, cursor.pid, cursor.eid, k, r.pid, r.sid);
+// }
+
+void printNonLeaf(PageId pid, const PageFile& pf, queue<PageId> &q){
+	BTNonLeafNode nl = BTNonLeafNode();
+	nl.read(pid, pf);
+	for(int i=0; i<nl.getKeyCount(); i++){
+		if(i==0){
+			q.push(bytes2int(nl.buffer));
+			cout<<"First pid is "<<bytes2int(nl.buffer)<<endl;
+		}
+		q.push(bytes2int(nl.buffer+i*8+8));
+		printf("At offset %d, key is %d and pid is %d\n", i, bytes2int(nl.buffer+i*8+4), bytes2int(nl.buffer+i*8+8));
+	}
+}
+
+// print leaf node information
+void printLeaf(PageId pid, const PageFile& pf, queue<PageId>& q){
+	BTLeafNode l = BTLeafNode();
+	l.read(pid, pf);
+	int eid = 0, key;
+	RecordId rid;
+	cout<<"l.getKeyCount() is "<<l.getKeyCount()<<endl;
+	for(eid; eid<l.getKeyCount(); eid++){
+		l.readEntry(eid, key, rid);
+		printf("At eid %d, key is %d, rid.pid is %d and rid.sid is %d\n", eid, key, rid.pid, rid.sid);
+	}
+
+	PageId next = l.getNextNodePtr();
+	cout<<"nextnodeptr is "<<next<<endl;
+}
+
 /*
  * BTreeIndex constructor
  */
@@ -129,7 +211,7 @@ RC BTreeIndex::insert(int key, const RecordId& rid)
     if (error != 0)
     	return error;
 
-    if (ln.getKeyCount() < 4)
+    if (ln.getKeyCount() < 80)
     {
     	ln.insert(key, rid);
     	ln.write(pid, pf);
@@ -183,7 +265,7 @@ RC BTreeIndex::insertParent(stack<PageId> path, int key, PageId pid)
 	if (error != 0)
 		return error;
 
-	if (nln.getKeyCount() < 6)
+	if (nln.getKeyCount() < 120)
 	{
 		nln.insert(key, pid);
 		nln.write(parent, pf);
@@ -243,6 +325,14 @@ RC BTreeIndex::locate(int searchKey, IndexCursor& cursor)
     error = leafnode.read(pid, pf);
     if(error != 0)
     	return error;
+
+    if(leafnode.getKeyCount()==0){
+    	pid = leafnode.getNextNodePtr();
+    	error = leafnode.read(pid, pf);
+    	if(error!=0)
+    		return error;
+    }
+
     error = leafnode.locate(searchKey, eid);
     if(error != 0){
     	cursor.pid = pid;
@@ -265,8 +355,13 @@ RC BTreeIndex::locate(int searchKey, IndexCursor& cursor)
  * @param rid[OUT] the RecordId stored at the index cursor location.
  * @return error code. 0 if no error
  */
+void printR(RecordId& rid){
+  printf("Rid.pid is %d and rid.sid is %d\n", rid.pid, rid.sid);
+}
+
 RC BTreeIndex::readForward(IndexCursor& cursor, int& key, RecordId& rid)
 {
+	//printf("Before action, cursor.pid is %d and cursor.eid is %d\n", cursor.pid, cursor.eid);
 	PageId pid = cursor.pid;
 	int eid = cursor.eid;
 	if(pid <=0 || eid < 0 )
@@ -277,18 +372,27 @@ RC BTreeIndex::readForward(IndexCursor& cursor, int& key, RecordId& rid)
 	error = leafnode.read(pid, pf);
 	if(error != 0)
 		return error;
+
+	//cout<<"Line 382 key "<<key<<endl;
+	//printR(rid);
 	error = leafnode.readEntry(eid, key, rid);
+	//cout<<"Line 385 key "<<key<<endl;
+	//printR(rid);
 	if(error != 0)
 		return error;
 
+	eid++;
 	if(eid == leafnode.getKeyCount()){
 		eid = 0;
 		pid = leafnode.getNextNodePtr();
+		error = leafnode.read(pid, pf);
+		if(error != 0)
+			return error;
 	}
-	else
-		eid++;
 
 	cursor.pid = pid;
 	cursor.eid = eid;
+	//printf("After action, cursor.pid is %d and cursor.eid is %d\n", cursor.pid, cursor.eid);
+
     return 0;
 }

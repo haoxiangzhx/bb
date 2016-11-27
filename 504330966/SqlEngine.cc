@@ -13,6 +13,7 @@
 #include <iostream>
 #include <fstream>
 #include <algorithm>
+#include <climits>
 #include "Bruinbase.h"
 #include "SqlEngine.h"
 #include "BTreeIndex.h"
@@ -23,8 +24,19 @@ using namespace std;
 extern FILE* sqlin;
 int sqlparse(void);
 
+bool operator < (const IndexCursor& c1, const IndexCursor& c2);
 vector<int> getEQ(const vector<SelCond>& cond);
+int getUpperBound(const vector<SelCond> cond, SelCond &res);
+int getLowerBound(const vector<SelCond> cond, SelCond &res);
+void printTuple(int &attr, int &key, string &value);
 
+void printCursor(IndexCursor& c){
+  printf("IndexCursor pid is %d and eid is %d\n", c.pid, c.eid);
+}
+
+void printRid(RecordId& rid){
+  printf("Rid.pid is %d and rid.sid is %d\n", rid.pid, rid.sid);
+}
 
 RC SqlEngine::run(FILE* commandline)
 {
@@ -74,33 +86,33 @@ RC SqlEngine::select(int attr, const string& table, const vector<SelCond>& cond)
       // compute the difference between the tuple value and the condition value
       switch (cond[i].attr) {
       case 1:
-	diff = key - atoi(cond[i].value);
-	break;
+    diff = key - atoi(cond[i].value);
+    break;
       case 2:
-	diff = strcmp(value.c_str(), cond[i].value);
-	break;
+    diff = strcmp(value.c_str(), cond[i].value);
+    break;
       }
 
       // skip the tuple if any condition is not met
       switch (cond[i].comp) {
       case SelCond::EQ:
-	if (diff != 0) goto next_tuple;
-	break;
+    if (diff != 0) goto next_tuple;
+    break;
       case SelCond::NE:
-	if (diff == 0) goto next_tuple;
-	break;
+    if (diff == 0) goto next_tuple;
+    break;
       case SelCond::GT:
-	if (diff <= 0) goto next_tuple;
-	break;
+    if (diff <= 0) goto next_tuple;
+    break;
       case SelCond::LT:
-	if (diff >= 0) goto next_tuple;
-	break;
+    if (diff >= 0) goto next_tuple;
+    break;
       case SelCond::GE:
-	if (diff < 0) goto next_tuple;
-	break;
+    if (diff < 0) goto next_tuple;
+    break;
       case SelCond::LE:
-	if (diff > 0) goto next_tuple;
-	break;
+    if (diff > 0) goto next_tuple;
+    break;
       }
     }
 
@@ -139,42 +151,136 @@ RC SqlEngine::select(int attr, const string& table, const vector<SelCond>& cond)
   }
   else
   {
+    // condition on value or comp = NE
     for (int i = 0; i < cond.size(); i++)
-      if (cond[i].attr == 2)  // condition on value
-        goto without_index;
-
-    if (cond.size() == 1) // only one condition
     {
-      if (cond[0].comp == SelCond::NE) // key <>
-        goto without_index;
-      else if (cond[0].comp == SelCond::EQ)  // key =
-      {
-
-      }
-      else  // key <, >, <=, >=
-      {
-
-      }
+      if ((cond[i].attr == 2) || (cond[i].comp == SelCond::NE))
+        goto without_index;   
     }
-    else  // more than one condition
+
+    // EQ
+    vector<int> eq = getEQ(cond);
+    if (eq.size() == 1)
     {
-      for (int i = 0; i < cond.size(); i++)
-        if (cond[i].comp == SelCond::NE)
-          goto without_index;
-
-      vector<int> eq = getEQ(cond);
-      if (eq.size() == 1)
-      {
-        return 0;
+      IndexCursor cursor = {-1, -1};
+      RC error = btidx.locate(eq[0], cursor);
+      if(error != 0)
+        return error;
+      else{
+        int k = -1;
+        RecordId r = {-1, -1};
+        error = btidx.readForward(cursor, k, r);
+        if(error != 0)
+          return error;
+        if(k != eq[0])
+          return RC_NO_SUCH_RECORD;
+        else{
+          if(attr == 1)
+            fprintf(stdout, "%d\n", k);
+          if(attr == 4)
+            fprintf(stdout, "%d\n", 1);
+          int retKey;
+          string retVal;
+          if((rc = rf.read(r, retKey, retVal)) != 0)
+            return rc;
+          else{
+            if(attr == 2)
+              fprintf(stdout, "%s\n", retVal.c_str());
+            if(attr == 3)
+              fprintf(stdout, "%d '%s'\n", retKey, retVal.c_str());
+          }
+        }
       }
-      else if (eq.size() > 1)
-        return 0;
-      else
-      {
-
-      }
-
+      return 0;
     }
+    else if (eq.size() > 1)
+      return 0;
+
+    // range
+    SelCond upper, lower;
+    int max, min;
+    max = getUpperBound(cond, upper);
+    min = getLowerBound(cond, lower);
+
+    IndexCursor minCursor, maxCursor;
+    rc = btidx.locate(min, minCursor);
+    if (rc == 0)
+    {
+      if (lower.comp == SelCond::GT)
+        btidx.readForward(minCursor, key, rid);
+    }
+    rc = btidx.locate(max, maxCursor);
+
+    if(attr == 4){
+      count = 0;
+      //cout<<"max";
+    //printCursor(maxCursor);
+      while (minCursor < maxCursor)
+      {
+      //printCursor(minCursor);
+      //printRid(rid);
+        RC r = btidx.readForward(minCursor, key, rid);
+        if(r != 0){
+        //cout<<"rc value is "<<r<<endl;
+          break;
+        }
+      //printCursor(minCursor);
+        //rf.read(rid, key, value);
+       // printTuple(attr, key, value);
+
+      //if(!(minCursor < maxCursor))
+        //cout<<"mincursor not < maxcursor"<<endl;
+
+      //cout<<"rc value is "<<r<<endl;
+        count++;
+      }
+
+      if (rc == 0 && upper.comp == SelCond::LE)
+      {
+        //cout<<"enter 232"<<endl;
+        RC r = btidx.readForward(minCursor, key, rid);
+        count++;
+      }
+      fprintf(stdout, "%d\n", count);
+    }
+    else{
+    //cout<<"max";
+    //printCursor(maxCursor);
+    while (minCursor < maxCursor)
+    {
+      //printCursor(minCursor);
+      //printRid(rid);
+      RC r = btidx.readForward(minCursor, key, rid);
+      if(r != 0){
+        //cout<<"rc value is "<<r<<endl;
+        break;
+      }
+      //printCursor(minCursor);
+      rf.read(rid, key, value);
+      printTuple(attr, key, value);
+
+      //if(!(minCursor < maxCursor))
+        //cout<<"mincursor not < maxcursor"<<endl;
+
+      //cout<<"rc value is "<<r<<endl;
+      //count++;
+    }
+
+    if (rc == 0 && upper.comp == SelCond::LE)
+    {
+      cout<<"enter 232"<<endl;
+      RC r = btidx.readForward(minCursor, key, rid);
+      rf.read(rid, key, value);
+      printTuple(attr, key, value);
+      //count++;
+    }
+
+  }
+
+    //if (attr == 4) 
+      //fprintf(stdout, "%d\n", count);
+
+    rf.close();
   }
 }
 
@@ -293,3 +399,88 @@ vector<int> getEQ(const vector<SelCond>& cond)
   }
   return res;
 }
+
+int getUpperBound(const vector<SelCond> cond, SelCond &res)
+{
+  int min = INT_MAX;
+  for (int i = 0; i < cond.size(); i++)
+  {
+    if (cond[i].comp == SelCond::LT)
+    {
+      int temp = atoi(cond[i].value);
+      if ((temp < min) || (temp == min && res.comp == SelCond::LE))
+      {
+        min = temp;
+        res = cond[i];
+      }
+    }
+    else if (cond[i].comp == SelCond::LE)
+    {
+      int temp = atoi(cond[i].value);
+      if (temp < min)
+      {
+        min = temp;
+        res = cond[i];
+      }
+    }
+  }
+  return min;
+}
+
+int getLowerBound(const vector<SelCond> cond, SelCond &res)
+{
+  int max = INT_MIN;
+  for (int i = 0; i < cond.size(); i++)
+  {
+    if (cond[i].comp == SelCond::GT)
+    {
+      int temp = atoi(cond[i].value);
+      if ((temp > max) || (temp == max && res.comp == SelCond::GE))
+      {
+        max = temp;
+        res = cond[i];
+      }
+    }
+    else if (cond[i].comp == SelCond::GE)
+    {
+      int temp = atoi(cond[i].value);
+      if (temp > max)
+      {
+        max = temp;
+        res = cond[i];
+      }
+    }
+  }
+  return max;
+}
+
+void printTuple(int &attr, int &key, string &value){
+    switch (attr) {
+    case 1:  // SELECT key
+      fprintf(stdout, "%d\n", key);
+      break;
+    case 2:  // SELECT value
+      fprintf(stdout, "%s\n", value.c_str());
+      break;
+    case 3:  // SELECT *
+      fprintf(stdout, "%d '%s'\n", key, value.c_str());
+      break;
+    }
+}
+
+bool operator < (const IndexCursor& c1, const IndexCursor& c2)
+{
+  if (c1.pid == c2.pid){
+    if(c1.eid == c2.eid)
+      return false;
+    return true;
+  }
+  return true;
+}
+
+// bool operator < (const IndexCursor& c1, const IndexCursor& c2)
+// {
+//   if (c1.pid == c2.pid)
+//     return c1.eid < c2.eid;
+//   return c1.pid < c2.pid;
+// }
