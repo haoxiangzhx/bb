@@ -25,10 +25,12 @@ extern FILE* sqlin;
 int sqlparse(void);
 
 bool operator < (const IndexCursor& c1, const IndexCursor& c2);
+vector<SelCond> getCondOnValue(const vector<SelCond>& cond);
 vector<int> getEQorNE(const vector<SelCond>& cond, SelCond::Comparator comp);
 int getUpperBound(const vector<SelCond> cond, SelCond &res);
 int getLowerBound(const vector<SelCond> cond, SelCond &res);
 void printTuple(int &attr, int &key, string &value);
+bool skipTuple(vector<SelCond> cond, string value);
 
 void printCursor(IndexCursor& c){
   printf("IndexCursor pid is %d and eid is %d\n", c.pid, c.eid);
@@ -151,12 +153,10 @@ RC SqlEngine::select(int attr, const string& table, const vector<SelCond>& cond)
   }
   else
   {
-    // condition on value or comp = NE
-    for (int i = 0; i < cond.size(); i++)
-    {
-      if (cond[i].attr == 2)
-        goto without_index;   
-    }
+    // condition only on value
+    vector<SelCond> valueCond = getCondOnValue(cond);
+    if (valueCond.size() == cond.size())
+        goto without_index;
 
     vector<int> ne = getEQorNE(cond, SelCond::NE);
 
@@ -180,6 +180,15 @@ RC SqlEngine::select(int attr, const string& table, const vector<SelCond>& cond)
           return error;
         if(k != eq[0])
           return RC_NO_SUCH_RECORD;
+
+        if (valueCond.size() > 0)
+        {
+          if((rc = rf.read(r, key, value)) != 0)
+            return rc;
+          if (skipTuple(valueCond, value))
+            return 0;
+        }
+
         else{
           if(attr == 1)
             fprintf(stdout, "%d\n", k);
@@ -246,6 +255,14 @@ RC SqlEngine::select(int attr, const string& table, const vector<SelCond>& cond)
         if(notEq)
           continue;
 
+        if (valueCond.size() > 0)
+        {
+          if((rc = rf.read(rid, key, value)) != 0)
+            return rc;
+          if (skipTuple(valueCond, value))
+            continue;
+        }
+
         count++;
       }
 
@@ -273,6 +290,14 @@ RC SqlEngine::select(int attr, const string& table, const vector<SelCond>& cond)
       }
       if(notEq)
         continue;
+
+      if (valueCond.size() > 0)
+      {
+        if((rc = rf.read(rid, key, value)) != 0)
+          return rc;
+        if (skipTuple(valueCond, value))
+          continue;
+      }
 
       rf.read(rid, key, value);
       printTuple(attr, key, value);
@@ -392,6 +417,17 @@ RC SqlEngine::parseLoadLine(const string& line, int& key, string& value)
     return 0;
 }
 
+vector<SelCond> getCondOnValue(const vector<SelCond>& cond)
+{
+  vector<SelCond> res;
+  for (int i = 0; i < cond.size(); i++)
+  {
+    if (cond[i].attr == 2)
+      res.push_back(cond[i]);         
+  }
+  return res;
+}
+
 vector<int> getEQorNE(const vector<SelCond>& cond, SelCond::Comparator comp)
 {
   vector<int> res;
@@ -483,4 +519,35 @@ bool operator < (const IndexCursor& c1, const IndexCursor& c2)
     return true;
   }
   return true;
+}
+
+bool skipTuple(vector<SelCond> cond, string value)
+{
+  bool res = false;
+  for (int i = 0; i < cond.size(); i++)
+  {
+    int diff = strcmp(value.c_str(), cond[i].value);
+    switch (cond[i].comp) 
+    {
+      case SelCond::EQ:
+        if (diff != 0) res = true;
+        break;
+      case SelCond::NE:
+        if (diff == 0) res = true;
+        break;
+      case SelCond::GT:
+        if (diff <= 0) res = true;
+        break;
+      case SelCond::LT:
+        if (diff >= 0) res = true;
+        break;
+      case SelCond::GE:
+        if (diff < 0) res = true;
+        break;
+      case SelCond::LE:
+        if (diff > 0) res = true;
+        break;
+    }
+  }
+  return res;
 }
