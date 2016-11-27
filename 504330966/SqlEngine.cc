@@ -25,7 +25,7 @@ extern FILE* sqlin;
 int sqlparse(void);
 
 bool operator < (const IndexCursor& c1, const IndexCursor& c2);
-vector<int> getEQorNE(const vector<SelCond>& cond, Comparator comp);
+vector<int> getEQorNE(const vector<SelCond>& cond, SelCond::Comparator comp);
 int getUpperBound(const vector<SelCond> cond, SelCond &res);
 int getLowerBound(const vector<SelCond> cond, SelCond &res);
 void printTuple(int &attr, int &key, string &value);
@@ -213,7 +213,6 @@ RC SqlEngine::select(int attr, const string& table, const vector<SelCond>& cond)
       minCursor = {1, 0};
     else{
       rc = btidx.locate(min, minCursor);
-      //minCursor={0, 0};
     }
     if (rc == 0)
     {
@@ -221,100 +220,72 @@ RC SqlEngine::select(int attr, const string& table, const vector<SelCond>& cond)
         btidx.readForward(minCursor, key, rid);
     }
     if(max == INT_MAX){
-      cout<<"enter 213"<<endl;
       maxCursor={0,0};
     }
     else{
-      cout<<"enter 217"<<endl;
       rc = btidx.locate(max, maxCursor);
     }
 
     if(attr == 4){
       count = 0;
-    cout<<"max";
-    printCursor(maxCursor);
-    //printCursor(minCursor);
+
       while (minCursor < maxCursor)
       {
-      //printCursor(minCursor);
-      //printRid(rid);
-        // if(minCursor.pid == 0 && minCursor.eid == 0){
-        //   cout<<"enter 236"<<endl;
-        //   break;
-        // }
-
         RC r = btidx.readForward(minCursor, key, rid);
         if(r != 0){
-          cout<<"enter 241"<<endl;
           break;
         }
 
-        for (int i = 0; i < ne.size(); i++)
-          if (ne[i] == key)
-            continue;
-      //printCursor(minCursor);
-        //rf.read(rid, key, value);
-       // printTuple(attr, key, value);
+        bool notEq = false;
+        for (int i = 0; i < ne.size(); i++){
+          if (ne[i] == key){
+            notEq = true;
+            break;
+          }
+        }
+        if(notEq)
+          continue;
 
-      // if(!(minCursor < maxCursor)){
-      //   printCursor(maxCursor);
-      //   printCursor(minCursor);
-      //   cout<<"mincursor not < maxcursor"<<endl;
-      // }
-
-      //cout<<"rc value is "<<r<<endl;
         count++;
       }
 
       if (rc == 0 && upper.comp == SelCond::LE)
       {
-        //cout<<"enter 232"<<endl;
         RC r = btidx.readForward(minCursor, key, rid);
         count++;
       }
       fprintf(stdout, "%d\n", count);
     }
-    else{
-    //cout<<"max";
-    //printCursor(maxCursor);
+  else{
     while (minCursor < maxCursor)
     {
-      //printCursor(minCursor);
-      //printRid(rid);
       RC r = btidx.readForward(minCursor, key, rid);
       if(r != 0){
-        //cout<<"rc value is "<<r<<endl;
         break;
       }
 
-      for (int i = 0; i < ne.size(); i++)
-        if (ne[i] == key)
-          continue;
+      bool notEq = false;
+      for (int i = 0; i < ne.size(); i++){
+        if (ne[i] == key){
+          notEq = true;
+          break;
+        }
+      }
+      if(notEq)
+        continue;
 
-      //printCursor(minCursor);
       rf.read(rid, key, value);
       printTuple(attr, key, value);
-
-      //if(!(minCursor < maxCursor))
-        //cout<<"mincursor not < maxcursor"<<endl;
-
-      //cout<<"rc value is "<<r<<endl;
-      //count++;
     }
 
     if (rc == 0 && upper.comp == SelCond::LE)
     {
-      cout<<"enter 232"<<endl;
       RC r = btidx.readForward(minCursor, key, rid);
       rf.read(rid, key, value);
       printTuple(attr, key, value);
-      //count++;
     }
 
   }
-
-    //if (attr == 4) 
-      //fprintf(stdout, "%d\n", count);
 
     rf.close();
   }
@@ -421,7 +392,7 @@ RC SqlEngine::parseLoadLine(const string& line, int& key, string& value)
     return 0;
 }
 
-vector<int> getEQorNE(const vector<SelCond>& cond, Comparator comp)
+vector<int> getEQorNE(const vector<SelCond>& cond, SelCond::Comparator comp)
 {
   vector<int> res;
   for (int i = 0; i < cond.size(); i++)
@@ -513,10 +484,3 @@ bool operator < (const IndexCursor& c1, const IndexCursor& c2)
   }
   return true;
 }
-
-// bool operator < (const IndexCursor& c1, const IndexCursor& c2)
-// {
-//   if (c1.pid == c2.pid)
-//     return c1.eid < c2.eid;
-//   return c1.pid < c2.pid;
-// }
