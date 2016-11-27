@@ -20,10 +20,9 @@ void printNonLeaf(PageId pid, const PageFile& pf, queue<PageId>& q);
 
 // int main(){
 // 	BTreeIndex index = BTreeIndex();
-// 	RC ret = index.open("mv.idx", 'w');
+// 	RC ret = index.open("xlarge.idx", 'w');
 // 	cout<<"ret of index.open() is "<<ret<<endl;
 // 	RecordId rid;
-	
 
 // 	// get rootpid and tree height
 // 	printf("Rootpid is %d and Treeheight is %d\n", index.getRootPid(), index.getTreeHeight());
@@ -50,6 +49,7 @@ void printNonLeaf(PageId pid, const PageFile& pf, queue<PageId>& q);
 // 				cout<<"pid is "<<id<<endl;
 // 				printNonLeaf(id, file, q);
 // 			}
+// 			exit(0);
 // 		}
 // 	}
 // 	// printLeaf(3, index.getPageFile());
@@ -167,19 +167,19 @@ RC BTreeIndex::insert(int key, const RecordId& rid)
 	if (rootPid == -1)
 	{
 		rootPid = pf.endPid();
-		treeHeight=2;
+		treeHeight=1;
 
-		BTNonLeafNode nln;
-		nln.initializeRoot(pf.endPid()+1, key, pf.endPid()+2);
-		error = nln.write(pf.endPid(), pf);
-		if (error != 0)
-			return error;
+		// BTNonLeafNode nln;
+		// nln.initializeRoot(pf.endPid()+1, key, pf.endPid()+2);
+		// error = nln.write(pf.endPid(), pf);
+		// if (error != 0)
+		// 	return error;
 
-		BTLeafNode temp;
-		temp.setNextNodePtr(pf.endPid()+1);
-		error = temp.write(pf.endPid(), pf);
-		if (error != 0)
-			return error;
+		// BTLeafNode temp;
+		// temp.setNextNodePtr(pf.endPid()+1);
+		// error = temp.write(pf.endPid(), pf);
+		// if (error != 0)
+		// 	return error;
 
 		BTLeafNode ln;
 		ln.insert(key, rid);
@@ -211,7 +211,7 @@ RC BTreeIndex::insert(int key, const RecordId& rid)
     if (error != 0)
     	return error;
 
-    if (ln.getKeyCount() < 80)
+    if (ln.getKeyCount() < 83)
     {
     	ln.insert(key, rid);
     	ln.write(pid, pf);
@@ -265,7 +265,7 @@ RC BTreeIndex::insertParent(stack<PageId> path, int key, PageId pid)
 	if (error != 0)
 		return error;
 
-	if (nln.getKeyCount() < 120)
+	if (nln.getKeyCount() < 125)
 	{
 		nln.insert(key, pid);
 		nln.write(parent, pf);

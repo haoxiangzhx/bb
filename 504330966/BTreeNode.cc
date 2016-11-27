@@ -29,7 +29,7 @@ RC BTLeafNode::read(PageId pid, const PageFile& pf)
     int rc;
     if ((rc = pf.read(pid, buffer)) < 0) 
     {
-      fprintf(stderr, "Error: while reading a page from page %d\n", pid);
+      fprintf(stderr, "Error: while reading leafnode a page from page %d\n", pid);
       return rc;
     }
     return 0;
@@ -219,7 +219,7 @@ RC BTNonLeafNode::read(PageId pid, const PageFile& pf)
     int rc;
     if ((rc = pf.read(pid, buffer)) < 0) 
     {
-      fprintf(stderr, "Error: while reading a page from page %d\n", pid);
+      fprintf(stderr, "Error: while reading nonleafnode a page from page %d\n", pid);
       return rc;
     }
     return 0;

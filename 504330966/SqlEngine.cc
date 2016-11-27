@@ -203,33 +203,54 @@ RC SqlEngine::select(int attr, const string& table, const vector<SelCond>& cond)
     min = getLowerBound(cond, lower);
 
     IndexCursor minCursor, maxCursor;
-    rc = btidx.locate(min, minCursor);
+    if(min == INT_MIN)
+      minCursor = {1, 0};
+    else{
+      rc = btidx.locate(min, minCursor);
+      //minCursor={0, 0};
+    }
     if (rc == 0)
     {
       if (lower.comp == SelCond::GT)
         btidx.readForward(minCursor, key, rid);
     }
-    rc = btidx.locate(max, maxCursor);
+    if(max == INT_MAX){
+      cout<<"enter 213"<<endl;
+      maxCursor={0,0};
+    }
+    else{
+      cout<<"enter 217"<<endl;
+      rc = btidx.locate(max, maxCursor);
+    }
 
     if(attr == 4){
       count = 0;
-      //cout<<"max";
-    //printCursor(maxCursor);
+    cout<<"max";
+    printCursor(maxCursor);
+    //printCursor(minCursor);
       while (minCursor < maxCursor)
       {
       //printCursor(minCursor);
       //printRid(rid);
+        // if(minCursor.pid == 0 && minCursor.eid == 0){
+        //   cout<<"enter 236"<<endl;
+        //   break;
+        // }
+
         RC r = btidx.readForward(minCursor, key, rid);
         if(r != 0){
-        //cout<<"rc value is "<<r<<endl;
+          cout<<"enter 241"<<endl;
           break;
         }
       //printCursor(minCursor);
         //rf.read(rid, key, value);
        // printTuple(attr, key, value);
 
-      //if(!(minCursor < maxCursor))
-        //cout<<"mincursor not < maxcursor"<<endl;
+      // if(!(minCursor < maxCursor)){
+      //   printCursor(maxCursor);
+      //   printCursor(minCursor);
+      //   cout<<"mincursor not < maxcursor"<<endl;
+      // }
 
       //cout<<"rc value is "<<r<<endl;
         count++;
