@@ -32,14 +32,6 @@ int getLowerBound(const vector<SelCond> cond, SelCond &res);
 void printTuple(int &attr, int &key, string &value);
 bool skipTuple(vector<SelCond> cond, string value);
 
-void printCursor(IndexCursor& c){
-  printf("IndexCursor pid is %d and eid is %d\n", c.pid, c.eid);
-}
-
-void printRid(RecordId& rid){
-  printf("Rid.pid is %d and rid.sid is %d\n", rid.pid, rid.sid);
-}
-
 RC SqlEngine::run(FILE* commandline)
 {
   fprintf(stdout, "Bruinbase> ");
@@ -72,84 +64,84 @@ RC SqlEngine::select(int attr, const string& table, const vector<SelCond>& cond)
   BTreeIndex btidx;
   if (btidx.open(table+".idx", 'r') < 0)
   {
-  without_index:
-  // scan the table file from the beginning
-  rid.pid = rid.sid = 0;
-  count = 0;
-  while (rid < rf.endRid()) {
-    // read the tuple
-    if ((rc = rf.read(rid, key, value)) < 0) {
-      fprintf(stderr, "Error: while reading a tuple from table %s\n", table.c_str());
-      goto exit_select;
-    }
-
-    // check the conditions on the tuple
-    for (unsigned i = 0; i < cond.size(); i++) {
-      // compute the difference between the tuple value and the condition value
-      switch (cond[i].attr) {
-      case 1:
-    diff = key - atoi(cond[i].value);
-    break;
-      case 2:
-    diff = strcmp(value.c_str(), cond[i].value);
-    break;
+    without_index:
+    // scan the table file from the beginning
+    rid.pid = rid.sid = 0;
+    count = 0;
+    while (rid < rf.endRid()) {
+      // read the tuple
+      if ((rc = rf.read(rid, key, value)) < 0) {
+        fprintf(stderr, "Error: while reading a tuple from table %s\n", table.c_str());
+        goto exit_select;
       }
 
-      // skip the tuple if any condition is not met
-      switch (cond[i].comp) {
-      case SelCond::EQ:
-    if (diff != 0) goto next_tuple;
-    break;
-      case SelCond::NE:
-    if (diff == 0) goto next_tuple;
-    break;
-      case SelCond::GT:
-    if (diff <= 0) goto next_tuple;
-    break;
-      case SelCond::LT:
-    if (diff >= 0) goto next_tuple;
-    break;
-      case SelCond::GE:
-    if (diff < 0) goto next_tuple;
-    break;
-      case SelCond::LE:
-    if (diff > 0) goto next_tuple;
-    break;
+      // check the conditions on the tuple
+      for (unsigned i = 0; i < cond.size(); i++) {
+        // compute the difference between the tuple value and the condition value
+        switch (cond[i].attr) {
+        case 1:
+      diff = key - atoi(cond[i].value);
+      break;
+        case 2:
+      diff = strcmp(value.c_str(), cond[i].value);
+      break;
+        }
+
+        // skip the tuple if any condition is not met
+        switch (cond[i].comp) {
+        case SelCond::EQ:
+      if (diff != 0) goto next_tuple;
+      break;
+        case SelCond::NE:
+      if (diff == 0) goto next_tuple;
+      break;
+        case SelCond::GT:
+      if (diff <= 0) goto next_tuple;
+      break;
+        case SelCond::LT:
+      if (diff >= 0) goto next_tuple;
+      break;
+        case SelCond::GE:
+      if (diff < 0) goto next_tuple;
+      break;
+        case SelCond::LE:
+      if (diff > 0) goto next_tuple;
+      break;
+        }
       }
+
+      // the condition is met for the tuple. 
+      // increase matching tuple counter
+      count++;
+
+      // print the tuple 
+      switch (attr) {
+      case 1:  // SELECT key
+        fprintf(stdout, "%d\n", key);
+        break;
+      case 2:  // SELECT value
+        fprintf(stdout, "%s\n", value.c_str());
+        break;
+      case 3:  // SELECT *
+        fprintf(stdout, "%d '%s'\n", key, value.c_str());
+        break;
+      }
+
+      // move to the next tuple
+      next_tuple:
+      ++rid;
     }
 
-    // the condition is met for the tuple. 
-    // increase matching tuple counter
-    count++;
-
-    // print the tuple 
-    switch (attr) {
-    case 1:  // SELECT key
-      fprintf(stdout, "%d\n", key);
-      break;
-    case 2:  // SELECT value
-      fprintf(stdout, "%s\n", value.c_str());
-      break;
-    case 3:  // SELECT *
-      fprintf(stdout, "%d '%s'\n", key, value.c_str());
-      break;
+    // print matching tuple count if "select count(*)"
+    if (attr == 4) {
+      fprintf(stdout, "%d\n", count);
     }
+    rc = 0;
 
-    // move to the next tuple
-    next_tuple:
-    ++rid;
-  }
-
-  // print matching tuple count if "select count(*)"
-  if (attr == 4) {
-    fprintf(stdout, "%d\n", count);
-  }
-  rc = 0;
-
-  // close the table file and return
-  exit_select:
-  rf.close();
-  return rc;
+    // close the table file and return
+    exit_select:
+    rf.close();
+    return rc;
   }
   else
   {
@@ -218,43 +210,36 @@ RC SqlEngine::select(int attr, const string& table, const vector<SelCond>& cond)
     min = getLowerBound(cond, lower);
 
     IndexCursor minCursor, maxCursor;
+
     if(min == INT_MIN)
       minCursor = {1, 0};
-    else{
-      rc = btidx.locate(min, minCursor);
-    }
-    if (rc == 0)
+    else
     {
-      if (lower.comp == SelCond::GT)
+      rc = btidx.locate(min, minCursor);
+      if (rc == 0 && lower.comp == SelCond::GT)
         btidx.readForward(minCursor, key, rid);
     }
-    if(max == INT_MAX){
-      maxCursor={0,0};
-    }
-    else{
+
+    if(max == INT_MAX)
+      maxCursor = {0, 0};
+    else
       rc = btidx.locate(max, maxCursor);
-    }
 
-    // cout<<min<<" "<<max<<endl;
-    // printCursor(minCursor);
-    // printCursor(maxCursor);
-    if(attr == 4){
+    if(attr == 4)
+    {
       count = 0;
-
       while (minCursor < maxCursor)
       {
         RC r = btidx.readForward(minCursor, key, rid);
-        if(r != 0){
+        if(r != 0)
           break;
-        }
 
         bool notEq = false;
-        for (int i = 0; i < ne.size(); i++){
+        for (int i = 0; i < ne.size(); i++)
           if (ne[i] == key){
             notEq = true;
             break;
           }
-        }
         if(notEq)
           continue;
 
@@ -276,52 +261,42 @@ RC SqlEngine::select(int attr, const string& table, const vector<SelCond>& cond)
       }
       fprintf(stdout, "%d\n", count);
     }
-  else{
-
-    while (minCursor < maxCursor)
+    else
     {
-      //cout<<"279"<<endl;
-      RC r = btidx.readForward(minCursor, key, rid);
-      if(r != 0){
-        break;
-      }
-
-      //cout<<"284"<<endl;
-      bool notEq = false;
-      for (int i = 0; i < ne.size(); i++){
-        if (ne[i] == key){
-          notEq = true;
-          break;
-        }
-      }
-      //cout<<"292"<<endl;
-      if(notEq)
-        continue;
-      //cout<<"294"<<endl;
-
-      //cout<<"valueCond.size() "<<valueCond.size()<<endl;
-      if (valueCond.size() > 0)
+      while (minCursor < maxCursor)
       {
-        //cout<<"enter 296"<<endl;
-        if((rc = rf.read(rid, key, value)) != 0)
-          return rc;
-        if (skipTuple(valueCond, value))
+        RC r = btidx.readForward(minCursor, key, rid);
+        if(r != 0)
+          break;
+
+        bool notEq = false;
+        for (int i = 0; i < ne.size(); i++)
+          if (ne[i] == key){
+            notEq = true;
+            break;
+          }
+        if(notEq)
           continue;
+
+        if (valueCond.size() > 0)
+        {
+          if((rc = rf.read(rid, key, value)) != 0)
+            return rc;
+          if (skipTuple(valueCond, value))
+            continue;
+        }
+
+        rf.read(rid, key, value);
+        printTuple(attr, key, value);
       }
 
-      rf.read(rid, key, value);
-      printTuple(attr, key, value);
+      if (rc == 0 && upper.comp == SelCond::LE)
+      {
+        RC r = btidx.readForward(minCursor, key, rid);
+        rf.read(rid, key, value);
+        printTuple(attr, key, value);
+      }
     }
-
-    if (rc == 0 && upper.comp == SelCond::LE)
-    {
-      RC r = btidx.readForward(minCursor, key, rid);
-      rf.read(rid, key, value);
-      printTuple(attr, key, value);
-    }
-
-  }
-
     rf.close();
   }
 }
@@ -443,7 +418,8 @@ vector<int> getEQorNE(const vector<SelCond>& cond, SelCond::Comparator comp)
   vector<int> res;
   for (int i = 0; i < cond.size(); i++)
   {
-    if(cond[i].attr == 1){
+    if(cond[i].attr == 1)
+    {
       if (cond[i].comp == comp)
       {
         int temp = atoi(cond[i].value);
@@ -460,7 +436,8 @@ int getUpperBound(const vector<SelCond> cond, SelCond &res)
   int min = INT_MAX;
   for (int i = 0; i < cond.size(); i++)
   {
-    if(cond[i].attr == 1){
+    if(cond[i].attr == 1)
+    {
       if (cond[i].comp == SelCond::LT)
       {
         int temp = atoi(cond[i].value);
@@ -489,7 +466,8 @@ int getLowerBound(const vector<SelCond> cond, SelCond &res)
   int max = INT_MIN;
   for (int i = 0; i < cond.size(); i++)
   {
-    if(cond[i].attr == 1){
+    if(cond[i].attr == 1)
+    {
       if (cond[i].comp == SelCond::GT)
       {
         int temp = atoi(cond[i].value);
@@ -539,12 +517,10 @@ bool operator < (const IndexCursor& c1, const IndexCursor& c2)
 
 bool skipTuple(vector<SelCond> cond, string value)
 {
-  //cout<<"enter skipTuple"<<endl;
   bool res = false;
   for (int i = 0; i < cond.size(); i++)
   {
     int diff = strcmp(value.c_str(), cond[i].value);
-    //cout<<"value.c_str " << value.c_str()<<" and cond.value "<<cond[i].value<<endl;
     switch (cond[i].comp) 
     {
       case SelCond::EQ:

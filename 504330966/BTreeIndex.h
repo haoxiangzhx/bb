@@ -14,8 +14,6 @@
 #include "PageFile.h"
 #include "RecordFile.h"
 #include <stack>
-
-using namespace std;
              
 /**
  * The data structure to point to a particular entry at a b+tree leaf node.
@@ -91,7 +89,7 @@ class BTreeIndex {
    */
   RC readForward(IndexCursor& cursor, int& key, RecordId& rid);
   
-  RC insertParent(stack<PageId> path, int key, PageId pid);
+  RC insertParent(std::stack<PageId> path, int key, PageId pid);
 
   PageFile getPageFile(){
     return pf;

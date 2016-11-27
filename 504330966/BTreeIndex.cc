@@ -9,9 +9,6 @@
  
 #include "BTreeIndex.h"
 #include "BTreeNode.h"
-#include <iostream>
-#include <queue>
-#include <unordered_set>
 
 using namespace std;
 
@@ -72,7 +69,7 @@ RC BTreeIndex::close()
 	error = pf.close();
     return error;
 }
-// 
+
 /*
  * Insert (key, RecordId) pair to the index.
  * @param key[IN] the key for the value inserted into the index
@@ -262,13 +259,8 @@ RC BTreeIndex::locate(int searchKey, IndexCursor& cursor)
  * @param rid[OUT] the RecordId stored at the index cursor location.
  * @return error code. 0 if no error
  */
-void printR(RecordId& rid){
-  printf("Rid.pid is %d and rid.sid is %d\n", rid.pid, rid.sid);
-}
-
 RC BTreeIndex::readForward(IndexCursor& cursor, int& key, RecordId& rid)
 {
-	//printf("Before action, cursor.pid is %d and cursor.eid is %d\n", cursor.pid, cursor.eid);
 	PageId pid = cursor.pid;
 	int eid = cursor.eid;
 	if(pid <=0 || eid < 0 )

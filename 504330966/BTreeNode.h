@@ -25,9 +25,7 @@ int bytes2int(char* bytes);
  */
 class BTLeafNode {
   public:
-    BTLeafNode(){
-        memset(buffer, 0, PageFile::PAGE_SIZE);
-    }
+    BTLeafNode() { memset(buffer, 0, PageFile::PAGE_SIZE); }
 
    /**
     * Insert the (key, rid) pair to the node.
@@ -109,15 +107,12 @@ class BTLeafNode {
     */
     RC write(PageId pid, PageFile& pf);
 
-  //private:
+  private:
    /**
     * The main memory buffer for loading the content of the disk page 
     * that contains the node.
     */
     char buffer[PageFile::PAGE_SIZE];
-
-
-    //int count = 0;
 }; 
 
 
@@ -126,9 +121,7 @@ class BTLeafNode {
  */
 class BTNonLeafNode {
   public:
-    BTNonLeafNode(){
-        memset(buffer, 0, PageFile::PAGE_SIZE);
-    }
+    BTNonLeafNode() { memset(buffer, 0, PageFile::PAGE_SIZE); }
    /**
     * Insert a (key, pid) pair to the node.
     * Remember that all keys inside a B+tree node should be kept sorted.
@@ -193,7 +186,7 @@ class BTNonLeafNode {
     */
     RC write(PageId pid, PageFile& pf);
 
-  //private:
+  private:
    /**
     * The main memory buffer for loading the content of the disk page 
     * that contains the node.
